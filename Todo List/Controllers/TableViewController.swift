@@ -9,34 +9,29 @@ import UIKit
 
 class TableViewController: UITableViewController {
     
-    var items  = ["Item 1", "Item 2", "Item 3", "Item 4", "Item 5", "Item 6", "Item 7", "Item 8", "Item 9", "Item 10"]
-    let defaults = UserDefaults.standard
+    var itemManager = ItemManager()
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        
+        itemManager.loadItems()
     }
     
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return items.count
+        return itemManager.getCount()
     }
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "ToDoItemCell", for: indexPath)
-        cell.textLabel?.text = items[indexPath.row]
+        cell.textLabel?.text = itemManager.getItemText(index: indexPath.row)
+        cell.accessoryType = itemManager.getItemDone(index: indexPath.row) ? .checkmark : .none
         return cell;
     }
     
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        let cell = tableView.cellForRow(at: indexPath)
-        if (cell?.accessoryType == .checkmark) {
-            cell?.accessoryType = .none
-        } else {
-            cell?.accessoryType = .checkmark
-        }
-        
+        itemManager.toggleItemDone(index: indexPath.row)
+        itemManager.saveItems()
+        tableView.reloadData()
         tableView.deselectRow(at: indexPath, animated: true)
-        
     }
     
 
@@ -45,10 +40,8 @@ class TableViewController: UITableViewController {
         
         let alertAction = UIAlertAction(title: "Add Item", style: .default) { (action) in
             if let todoItem = alert.textFields?.first?.text {
-                self.items.append(todoItem)
-                
-                self.defaults.set(self.items, forKey: "TodoListArray")
-                
+                self.itemManager.addItem(todoItem)
+                self.itemManager.saveItems()
                 self.tableView.reloadData()
             }
         }
@@ -64,5 +57,7 @@ class TableViewController: UITableViewController {
         present(alert, animated: true, completion: nil)
     }
     
+    
 }
+
 
