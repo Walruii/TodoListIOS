@@ -6,17 +6,19 @@
 //
 
 import Foundation
+import UIKit
+import CoreData
 
 struct ItemManager {
-    var items: [Item]  = []
-    let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist")
+    var items = [Item]()
+    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
 
     func getCount() -> Int {
         return items.count
     }
     
-    func getItemText(index: Int) -> String {
-        return items[index].text
+    func getItemTitle(index: Int) -> String {
+        return items[index].title ?? ""
     }
     
     func getItemDone(index: Int) -> Bool {
@@ -24,32 +26,52 @@ struct ItemManager {
     }
     
     mutating func toggleItemDone(index: Int) {
-        items[index].done.toggle()
+         items[index].done.toggle()
+//        context.delete(items[index])
+//        items.remove(at: index)
+        saveItems()
     }
     
-    mutating func addItem(_ itemText: String) {
-        let item = Item(text: itemText, done: false)
-        items.append(item)
+    mutating func addItem(title: String, category: TodoCategory) {
+        let newitem = Item(context: context)
+        newitem.title = title
+        newitem.category = category
+        newitem.done = false
+        items.append(newitem)
+        saveItems()
     }
     
-    func saveItems() {
-        let encoder = PropertyListEncoder()
-        
+    private func saveItems() {
         do {
-            let data = try encoder.encode(items)
-            try data.write(to: dataFilePath!)
+            try context.save()
         } catch {
-            print(error)
+            print("error saving context \(error)")
         }
     }
     
-    mutating func loadItems() {
-        let decoder = PropertyListDecoder()
+    mutating func loadItems(categoryName: String) {
+        let request: NSFetchRequest<Item> = Item.fetchRequest()
+        let predicate = NSPredicate(format: "category.title == %@", categoryName)
+        request.predicate = predicate
         do {
-            let data = try Data(contentsOf: dataFilePath!)
-            items = try decoder.decode([Item].self, from: data)
+            items = try context.fetch(request)
         } catch {
-            print(error)
+            print("error getting items \(error)")
+        }
+    }
+
+    mutating func loadItems(with request: NSFetchRequest<Item>, categoryName: String, predicate: NSPredicate? = nil) {
+        let categoryPredicate = NSPredicate(format: "category.title == %@", categoryName)
+        if let additionalPredicate = predicate {
+            let compoundPredicate = NSCompoundPredicate(andPredicateWithSubpredicates: [additionalPredicate, categoryPredicate])
+            request.predicate = compoundPredicate
+        } else {
+            request.predicate = categoryPredicate
+        }
+        do {
+            items = try context.fetch(request)
+        } catch {
+            print("error getting items \(error)")
         }
     }
 }
